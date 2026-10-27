@@ -126,6 +126,8 @@ pub enum GovernanceError {
     InvalidVetoTransition = 32,
     /// Issue #988: Signer veto reason hash does not match pending veto consent.
     VetoReasonMismatch = 33,
+    /// Issue #986: Proposal has already been executed; duplicate delayed execution replayed.
+    ProposalAlreadyExecuted = 34,
 }
 
 // ================================================================
@@ -546,6 +548,8 @@ pub enum StorageKey {
     /// Issue #642: signers who have already approved the pending veto of a
     /// given proposal (cleared once the veto executes).
     VetoApprovals(u64),
+    /// Issue #986: Durable replay protection receipt for executed proposals.
+    ExecutionReceipt(u64),
     /// Issue #814: governance-configurable forfeitable deposit escrowed at
     /// `create_proposal` (0 = disabled, default for backwards compatibility).
     MinProposalDeposit,
@@ -1994,6 +1998,12 @@ pub fn get_execution_delay(env: Env) -> u32 {
         }
 
         if proposal.status == ProposalStatus::Passed {
+
+        // Issue #986: Replay protection for delayed executions.
+        if env.storage().persistent().has(&StorageKey::ExecutionReceipt(proposal_id)) {
+            return Err(GovernanceError::ProposalAlreadyExecuted);
+        }
+
             // #995: single choke point for the eta invariant.
             Self::assert_executable(&env, &proposal)?;
 
@@ -2148,6 +2158,16 @@ pub fn get_execution_delay(env: Env) -> u32 {
                 // and leave the rejected execution invisible on-chain.
                 return Ok(());
             }
+
+            
+            // Issue #986: Mark execution receipt in persistent storage for replay protection
+            let receipt_key = StorageKey::ExecutionReceipt(proposal_id);
+            env.storage().persistent().set(&receipt_key, &true);
+            env.storage().persistent().extend_ttl(
+                &receipt_key,
+                VOTE_RECEIPT_TTL_THRESHOLD_LEDGERS,
+                VOTE_RECEIPT_TTL_LEDGERS,
+            );
 
             Self::transition_status(&env, &mut proposal, ProposalStatus::Executed)?;
 
@@ -2485,6 +2505,12 @@ pub fn veto_proposal(
 
     /// Issue #989: Returns the current state of the veto transition state machine for a proposal.
     /// Access: Anyone
+    
+    /// Issue #986: Returns true if the proposal has an active persistent execution receipt.
+    pub fn is_proposal_executed(env: Env, proposal_id: u64) -> bool {
+        env.storage().persistent().has(&StorageKey::ExecutionReceipt(proposal_id))
+    }
+
     pub fn get_veto_state(env: Env, proposal_id: u64) -> VetoState {
         if let Some(state) = env
             .storage()
@@ -2979,3 +3005,5 @@ mod tests_differential;
 mod tests_proof_obligations;
 #[cfg(test)]
 mod tests_veto_consent;
+#[cfg(test)]
+mod tests_delayed_execution_replay;
