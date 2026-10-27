@@ -765,6 +765,19 @@ pub fn set_max_oracle_age(env: Env, max_age_ledgers: u64) -> Result<(), Contract
     /// rejected as an outlier. Default is
     /// [`oracle_registry::DEFAULT_MAX_PRICE_DEVIATION_BPS`] (5%) until set.
     /// Access: Admin only.
+    
+    /// Governance: Set minimum required price oracle quorum. Admin only.
+    pub fn set_min_price_quorum(env: Env, quorum: u32) -> Result<(), ContractError> {
+        let admin = crate::storage::get_admin(&env).ok_or(ContractError::Unauthorized)?;
+        admin.require_auth();
+        oracle_registry::set_min_price_quorum(&env, quorum)
+    }
+
+    /// Read minimum required price oracle quorum.
+    pub fn get_min_price_quorum(env: Env) -> u32 {
+        oracle_registry::get_min_price_quorum(env)
+    }
+
     pub fn set_max_price_deviation_bps(env: Env, bps: u32) -> Result<(), ContractError> {
         oracle_registry::set_max_price_deviation_bps(&env, bps)
     }

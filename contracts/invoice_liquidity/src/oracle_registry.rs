@@ -1817,6 +1817,10 @@ pub fn get_verified_price(
     if survivors.is_empty() {
         return Err(ContractError::AllPriceSourcesRejected);
     }
+    let required_quorum = get_min_price_quorum(env.clone());
+    if (survivors.len() as u32) < required_quorum {
+        return Err(ContractError::OracleQuorumNotReached);
+    }
     Ok(median(&survivors))
 }
 
@@ -2036,4 +2040,17 @@ pub fn get_twap_aware_price(
             .ok_or(ContractError::InsufficientTwapObservations);
     }
     get_verified_price(env, feed_type, token)
+}
+
+// ── Min Price Quorum Helpers (Issue #1043) ──────────────────────────────────
+pub fn set_min_price_quorum(env: &Env, quorum: u32) -> Result<(), ContractError> {
+    if quorum == 0 || quorum > 10 {
+        return Err(ContractError::InvalidQuorumBps);
+    }
+    env.storage().instance().set(&DataKey::MinPriceQuorum, &quorum);
+    Ok(())
+}
+
+pub fn get_min_price_quorum(env: Env) -> u32 {
+    env.storage().instance().get(&DataKey::MinPriceQuorum).unwrap_or(1)
 }
