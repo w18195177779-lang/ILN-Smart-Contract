@@ -122,6 +122,10 @@ pub enum GovernanceError {
     InvalidTimelock = 30,
     /// #995: requested execution delay exceeds `MAX_EXECUTION_DELAY_LEDGERS`.
     InvalidExecutionDelay = 31,
+    /// Issue #988: Invalid veto transition attempted.
+    InvalidVetoTransition = 32,
+    /// Issue #988: Signer veto reason hash does not match pending veto consent.
+    VetoReasonMismatch = 33,
 }
 
 // ================================================================
@@ -2363,6 +2367,11 @@ pub fn veto_proposal(
             return Err(GovernanceError::InvalidVetoTransition);
         }
 
+        if current_veto_state.status == VetoStatus::Pending && current_veto_state.reason_hash != reason_hash {
+            return Err(GovernanceError::VetoReasonMismatch);
+        }
+
+
         let prev_status = current_veto_state.status;
 
         // ── Record this signer's approval (Issue #1099: durable) ──
@@ -2968,3 +2977,5 @@ mod tests_benchmarks;
 mod tests_differential;
 #[cfg(test)]
 mod tests_proof_obligations;
+#[cfg(test)]
+mod tests_veto_consent;
