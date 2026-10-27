@@ -771,6 +771,16 @@ pub fn set_max_oracle_age(env: Env, max_age_ledgers: u64) -> Result<(), Contract
 
     /// The currently configured maximum price deviation, in basis points.
     /// Access: Anyone
+    
+    /// Issue #1044: Read the latest persisted price record with timestamp for feed + token.
+    pub fn get_persisted_price_record(
+        env: Env,
+        feed_type: crate::oracle_registry::OracleFeedType,
+        token: Address,
+    ) -> Option<crate::storage::PersistedPriceRecord> {
+        crate::storage::get_persisted_price_record(&env, feed_type, &token)
+    }
+
     pub fn get_max_price_deviation_bps(env: Env) -> u32 {
         oracle_registry::get_max_price_deviation_bps(env)
     }

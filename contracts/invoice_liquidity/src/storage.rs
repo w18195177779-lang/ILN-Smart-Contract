@@ -129,6 +129,8 @@ pub enum DataKey {
     /// deviation (basis points) between a price source's reported price
     /// and the cross-source median before it's rejected as an outlier.
     MaxPriceDeviationBps,
+    /// Issue #1044: Persisted latest validated price record with timestamp.
+    LatestPriceRecord(crate::oracle_registry::OracleFeedType, Address),
     /// Issue #1047: registered Identity oracles for a feed type, queried
     /// together so `fund_invoice` can require N-of-M agreement on a payer's
     /// verification instead of trusting a single oracle. Bounded by
@@ -1167,4 +1169,30 @@ pub fn set_queue_tie_score_margin(env: &Env, margin: u32) {
     env.storage()
         .instance()
         .set(&DataKey::QueueTieScoreMargin, &margin);
+}
+
+// ─── Persisted Price Record Helpers (Issue #1044) ───────────────────────────
+#[derive(Clone, Debug, PartialEq)]
+#[soroban_sdk::contracttype]
+pub struct PersistedPriceRecord {
+    pub price: i128,
+    pub timestamp_seconds: u64,
+    pub ledger_sequence: u32,
+}
+
+pub fn get_persisted_price_record(
+    env: &Env,
+    feed_type: crate::oracle_registry::OracleFeedType,
+    token: &Address,
+) -> Option<PersistedPriceRecord> {
+    env.storage().instance().get(&DataKey::LatestPriceRecord(feed_type, token.clone()))
+}
+
+pub fn set_persisted_price_record(
+    env: &Env,
+    feed_type: crate::oracle_registry::OracleFeedType,
+    token: &Address,
+    record: &PersistedPriceRecord,
+) {
+    env.storage().instance().set(&DataKey::LatestPriceRecord(feed_type, token.clone()), record);
 }
