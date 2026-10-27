@@ -124,6 +124,8 @@ pub enum GovernanceError {
     InvalidTimelock = 30,
     /// #995: requested execution delay exceeds `MAX_EXECUTION_DELAY_LEDGERS`.
     InvalidExecutionDelay = 31,
+    /// Issue #981: Veto power cannot be disabled before an active timelock delay is configured.
+    TimelockRequired = 32,
 }
 
 // ================================================================
@@ -2566,6 +2568,17 @@ pub fn veto_proposal(
             return Err(GovernanceError::VetoPowerAlreadyDisabled);
         }
 
+        // Issue #981: Require an active timelock before veto disablement.
+        let delay: u32 = env
+            .storage()
+            .instance()
+            .get(&StorageKey::ExecutionDelay)
+            .unwrap_or(0_u32);
+        if delay < MIN_PRODUCTION_EXECUTION_DELAY_LEDGERS {
+            return Err(GovernanceError::TimelockRequired);
+        }
+
+
         env.storage()
             .instance()
             .set(&StorageKey::VetoPowerEnabled, &false);
@@ -2974,3 +2987,5 @@ mod tests_benchmarks;
 mod tests_differential;
 #[cfg(test)]
 mod tests_proof_obligations;
+#[cfg(test)]
+mod tests_timelock_before_veto_disablement;
