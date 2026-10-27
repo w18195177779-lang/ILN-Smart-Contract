@@ -1077,7 +1077,8 @@ pub fn create_proposal(
         if env.ledger().timestamp() < proposal.voting_end {
             return Err(GovernanceError::VotingOngoing);
         }
-        if env.ledger().sequence() < proposal.eta_ledger {
+        // Issue #979: Reject execution whose eta is in the current ledger (strictly require sequence > eta_ledger).
+        if env.ledger().sequence() <= proposal.eta_ledger {
             return Err(GovernanceError::TimelockNotExpired);
         }
         Ok(())
@@ -3030,6 +3031,8 @@ mod tests_benchmarks;
 mod tests_differential;
 #[cfg(test)]
 mod tests_proof_obligations;
+#[cfg(test)]
+mod tests_reject_current_ledger_eta;
 #[cfg(test)]
 mod tests_timelock_events;
 #[cfg(test)]
