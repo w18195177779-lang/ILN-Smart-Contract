@@ -4087,7 +4087,28 @@ pub fn resolve_dispute(
     /// `update_config` contract entry point.
 ///
 /// Access: Anyone
-pub fn update_config(
+
+    /// Governance: Set tie fairness resolution policy. Admin only.
+    pub fn set_tie_fairness_policy(
+        env: Env,
+        caller: Address,
+        policy: crate::storage::TieFairnessPolicy,
+    ) -> Result<(), ContractError> {
+        let admin = crate::storage::get_admin(&env).ok_or(ContractError::Unauthorized)?;
+        caller.require_auth();
+        if caller != admin {
+            return Err(ContractError::Unauthorized);
+        }
+        crate::storage::set_tie_fairness_policy(&env, policy);
+        Ok(())
+    }
+
+    /// Read current tie fairness resolution policy.
+    pub fn get_tie_fairness_policy(env: Env) -> crate::storage::TieFairnessPolicy {
+        crate::storage::get_tie_fairness_policy(&env)
+    }
+
+    pub fn update_config(
         env: Env,
         caller: Address,
         high_rep_threshold: u32,
@@ -4639,6 +4660,8 @@ mod tests_equal_score_invariant;
 mod tests_tie_entropy;
 #[cfg(test)]
 mod tests_queue_ordering;
+#[cfg(test)]
+mod tests_tie_fairness_policy;
 // Issue #848: ADR-011 reputation cross-contract consistency audit
 mod tests_reputation_state_isolation;
 // Issue #849: ADR-004 lazy reputation decay multi-year idle coverage

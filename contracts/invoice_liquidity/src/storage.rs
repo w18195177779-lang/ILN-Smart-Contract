@@ -49,6 +49,7 @@ pub enum DataKey {
     /// Used to enforce a minimum maturity delay before `resolve_fund_queue` may
     /// be called, preventing MEV / front-running (Issue #MEV-1).
     FundQueueOpenedAt(u64),
+    TieFairnessPolicy,
     /// Ledger sequence at which `resolve_fund_queue` locked in the winner
     /// (Issue #1020). Anchors the stalled-winner recovery grace period.
     QueueResolvedAt(u64),
@@ -1167,4 +1168,23 @@ pub fn set_queue_tie_score_margin(env: &Env, margin: u32) {
     env.storage()
         .instance()
         .set(&DataKey::QueueTieScoreMargin, &margin);
+}
+
+// ─── Tie Fairness Policy Helpers ─────────────────────────────────────────────
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[soroban_sdk::contracttype]
+pub enum TieFairnessPolicy {
+    UniformRandom = 0,
+    EarliestJoined = 1,
+}
+
+pub fn get_tie_fairness_policy(env: &Env) -> TieFairnessPolicy {
+    env.storage()
+        .instance()
+        .get(&DataKey::TieFairnessPolicy)
+        .unwrap_or(TieFairnessPolicy::UniformRandom)
+}
+
+pub fn set_tie_fairness_policy(env: &Env, policy: TieFairnessPolicy) {
+    env.storage().instance().set(&DataKey::TieFairnessPolicy, &policy);
 }
