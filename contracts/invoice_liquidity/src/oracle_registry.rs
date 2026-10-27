@@ -2054,3 +2054,15 @@ pub fn set_min_price_quorum(env: &Env, quorum: u32) -> Result<(), ContractError>
 pub fn get_min_price_quorum(env: Env) -> u32 {
     env.storage().instance().get(&DataKey::MinPriceQuorum).unwrap_or(1)
 }
+
+// ── Price Freshness Validation (Issue #1042) ────────────────────────────────
+pub fn validate_price_freshness(
+    current_ledger: u32,
+    price_timestamp_ledger: u32,
+    max_age_ledgers: u64,
+) -> Result<(), ContractError> {
+    if is_oracle_data_stale(current_ledger, price_timestamp_ledger, max_age_ledgers) {
+        return Err(ContractError::OracleDataStale);
+    }
+    Ok(())
+}
