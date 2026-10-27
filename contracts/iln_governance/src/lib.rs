@@ -50,6 +50,8 @@ const _: () = assert!((VOTE_RECEIPT_TTL_LEDGERS as u64) * 5 > VOTING_PERIOD_SECS
 /// unbounded delay would let a single admin key park every future proposal
 /// behind an unreachable `eta_ledger`.
 const MAX_EXECUTION_DELAY_LEDGERS: u32 = 518_400;
+/// Issue #982: Current timelock policy version.
+pub const TIMELOCK_POLICY_VERSION: u32 = 1;
 
 /// Default maximum transitive delegation chain depth.
 const DEFAULT_MAX_DELEGATION_DEPTH: u32 = 10;
@@ -968,6 +970,10 @@ pub fn create_proposal(
         env.storage()
             .persistent()
             .set(&StorageKey::ProposalProposer(id), &proposer);
+        // Issue #982: Persist active timelock policy version on proposal.
+        env.storage()
+            .persistent()
+            .set(&StorageKey::ProposalTimelockVersion(id), &TIMELOCK_POLICY_VERSION);
         env.storage()
             .instance()
             .set(&StorageKey::ProposalCount, &id);
