@@ -301,6 +301,26 @@ pub struct VotesUndelegated {
     pub delegator: Address,
 }
 
+
+/// Issue #980: emitted when a proposal passes and enters the timelock schedule.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimelockScheduled {
+    pub proposal_id: u64,
+    pub eta_ledger: u32,
+    pub execution_delay: u32,
+    pub current_ledger: u32,
+}
+
+/// Issue #980: emitted when a timelocked proposal is executed at or after eta.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimelockExecuted {
+    pub proposal_id: u64,
+    pub executed_at_ledger: u32,
+    pub eta_ledger: u32,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProposalExecuted {
@@ -1994,6 +2014,18 @@ pub fn get_execution_delay(env: Env) -> u32 {
             // Issue #814: passed — refund the deposit (idempotent, so the
             // later Passed -> Executed call does not double-pay).
             Self::refund_proposal_deposit(&env, proposal_id, &proposal.proposer)?;
+
+            // Issue #980: Emit auditable timelock schedule event
+            env.events().publish(
+                (Symbol::new(&env, "timelock_scheduled"), proposal_id),
+                TimelockScheduled {
+                    proposal_id,
+                    eta_ledger: proposal.eta_ledger,
+                    execution_delay: delay,
+                    current_ledger: env.ledger().sequence(),
+                },
+            );
+
             return Ok(());
         }
 
@@ -2154,6 +2186,17 @@ pub fn get_execution_delay(env: Env) -> u32 {
             }
 
             Self::transition_status(&env, &mut proposal, ProposalStatus::Executed)?;
+
+            // Issue #980: Emit auditable timelock execution event
+            env.events().publish(
+                (Symbol::new(&env, "timelock_executed"), proposal_id),
+                TimelockExecuted {
+                    proposal_id,
+                    executed_at_ledger: env.ledger().sequence(),
+                    eta_ledger: proposal.eta_ledger,
+                },
+            );
+
 
             // Issue #814: executed — ensure refund (no-op if already
             // refunded at Passed time; covers zero-deposit proposals).
@@ -2987,5 +3030,7 @@ mod tests_benchmarks;
 mod tests_differential;
 #[cfg(test)]
 mod tests_proof_obligations;
+#[cfg(test)]
+mod tests_timelock_events;
 #[cfg(test)]
 mod tests_timelock_before_veto_disablement;
